@@ -23,6 +23,7 @@ def Prob_eval_SFCA2(d, f = lambda x: 1.0/x):
     Args:
         d (numpy.array): Une matrice de distances. L'élément [i, j] représente la distance
             entre la commune i et la commune j.
+        f (fct) : Fonction de décroissement de la distance
 
     Returns:
         Prob (numpy.array): Une matrice de probabilités de même dimension que d. L'élément [i, j] 
@@ -49,6 +50,7 @@ def Prob_eval_SFCA3(d, S, f = lambda x: 1.0/x):
         d (numpy.array): Une matrice de distances. L'élément [i, j] représente 
             la distance entre la commune i et la commune j.
         S (numpy.array): Un vecteur de l'offre de soins pour chaque commune j.
+        f (fct) : Fonction de décroissement de la distance
 
     Returns:
         Prob (numpy.array): Une matrice de probabilités de même dimension que d. L'élément [i, j] 
@@ -215,6 +217,7 @@ def deserts_medicaux_FCA(d, communes, S, P, model="SFCA3", seuil  = 0.1, error =
         communes : les codes des communes (ou de départements)
         Seuil : Float, le sueil de décision
         Error (bool): Indique si les erreurs pendant l'algorithme du point fixe doivent ou pas être renvoyées. Par défaut, False.
+        f (fct) : Fonction de décroissement de la distance
 
     Returns:
         dataframe : contenant le code de chaque commune, le nb de medecins, le nb de population, son indicateur FCA, et si oui ou non c'est un desert medical .
@@ -429,7 +432,7 @@ def extract_simulation(simulation):
     return medecins, population
 
 @st.cache_data
-def deserts_medicaux(distancier, population, medecins, clean = False, spe = "Médecin généraliste", scale = "DEP", model = "SFCA2", approche="Naive") : 
+def deserts_medicaux(distancier, population, medecins, clean = False, spe = "Médecin généraliste", scale = "DEP", model = "SFCA2", approche="Naive", f_type = "inv") : 
 
     """
     Calcule les déserts médicaux en utilisant les données du distancier, de la population et des médecins en fonction du model choisi.
@@ -443,6 +446,7 @@ def deserts_medicaux(distancier, population, medecins, clean = False, spe = "Mé
         scale (str): L'échelle de regroupement des données (département, commune, etc.). Par défaut, "DEP".
         model (str): Le modèle à utiliser pour le calcul des déserts médicaux. Par défaut, "SFCA2".
         approche (str) : l'approche utilisée pour la quantité de soins servie et demandée. Par default "Naive" qui utilise le nombre de medecins et de population
+        f_type (str) : type de fonction de décroissement de la distance. Par défault "inv"
     
     Returns:
         pandas.dataframe: Un dataframe indiquant les déserts médicaux ou non avec son indicateur FCA pour chaque échelle spécifiée.
@@ -519,8 +523,18 @@ def deserts_medicaux(distancier, population, medecins, clean = False, spe = "Mé
     S_P = df_merge1[df_merge1[scale].isin(filter)]
     S = S_P["medecins"].values
     P = S_P["population"].values
+
+    #definir les differents types de fonction decroissante de la distance
+    fontions_decroissments = {
+        'inv' : lambda x : 1.0/x,
+        'exp' : lambda x : np.exp(-x),
+        'gauss' : lambda x : np.exp(-x**2)
+    }
+
+    f = fontions_decroissments[f_type]
+
     # Appliquer notre modele
-    is_desert = deserts_medicaux_FCA(d, S_P[scale].values , S, P, model=model)
+    is_desert = deserts_medicaux_FCA(d, S_P[scale].values , S, P, model=model, f = f)
 
     if scale == "CODGEO":
         is_desert["CODGEO\DEP"] = (is_desert["CODGEO\DEP"].astype(int)).astype(str)
@@ -599,6 +613,7 @@ spe = st.sidebar.selectbox("Spécialité :", list(medecins.iloc[3])[4:])  # Ajou
 scale = st.sidebar.selectbox("Échelle :", ["DEP", "REG", "CODGEO"])  # Ajoutez les autres échelles disponibles
 model = st.sidebar.selectbox("Modèle :", ["SFCA2", "SFCA3", "point fixe"])  # Ajoutez les autres modèles disponibles
 approche = st.sidebar.selectbox("Approche :", ["Naive", "Effets fixes"])  # Ajoutez les autres modèles disponibles
+f_type = st.sidebar.selectbox("décroissance/distance :", ["inv", "exp", "gauss"])  # Ajoutez les fonction des types de decroissance de la distance
 
 if scale == "DEP":
     distancier = distancier_dep
@@ -614,7 +629,7 @@ if scale =="CODGEO":
 if st.sidebar.button("Exécuter"):
     # Appeler les fonctions correspondantes avec les configurations sélectionnées
     st.subheader(f"Carte des déserts médicaux pour {spe} :")
-    is_desert = deserts_medicaux(distancier, population, medecins, model=model, spe=spe, clean=False, scale=scale, approche= approche)
+    is_desert = deserts_medicaux(distancier, population, medecins, model=model, spe=spe, clean=False, scale=scale, approche= approche, f_type=f_type)
     visualiser_deserts_medicaux_carte(is_desert, sf)
    
 
