@@ -13,8 +13,9 @@ from fixed_effects.simulation import *
 from pandas.api.types import is_numeric_dtype
 import warnings
 
+    
 
-def Prob_eval_SFCA2(d):
+def Prob_eval_SFCA2(d, f = lambda x: 1.0/x):
     """
     Calcule la probabilité qu'un patient d'une commune i visite un médecin d'une commune j
     en utilisant le modèle SFCA2.
@@ -27,7 +28,7 @@ def Prob_eval_SFCA2(d):
         Prob (numpy.array): Une matrice de probabilités de même dimension que d. L'élément [i, j] 
             représente la probabilité qu'un patient de la commune i visite un médecin de la commune j.
     """
-    W = 1.0 / d
+    W = f(d)
     sum_W = np.sum(W, axis=1, keepdims=True)
     sum_W [sum_W <= 1e-7]+= 1e-4
     
@@ -36,7 +37,7 @@ def Prob_eval_SFCA2(d):
     return Prob
 
 
-def Prob_eval_SFCA3(d, S):
+def Prob_eval_SFCA3(d, S, f = lambda x: 1.0/x):
     """
     Calcule la matrice de probabilité qu'un patient d'une commune i visite un médecin 
     d'une commune j en utilisant le modèle SFCA3.
@@ -53,7 +54,7 @@ def Prob_eval_SFCA3(d, S):
         Prob (numpy.array): Une matrice de probabilités de même dimension que d. L'élément [i, j] 
             représente la probabilité qu'un patient de la commune i visite un médecin de la commune j.
     """
-    W = 1.0 / d
+    W = f(d)
     WS = W * S
     WS_sum = np.sum(WS, axis=1, keepdims=True)
     WS_sum [WS_sum <= 1e-7]+= 1e-4
@@ -202,7 +203,7 @@ def find_fixed_point_2(W, P, S, tol=1e-10, max_iter=1000):
 
 
 
-def deserts_medicaux_FCA(d, communes, S, P, model="SFCA3", seuil  = 0.1, error = False):
+def deserts_medicaux_FCA(d, communes, S, P, model="SFCA3", seuil  = 0.1, error = False, f = lambda x : 1.0/x):
     """
     Détermine si chaque commune est un désert médical ou non en utilisant l'un des trois modèles.
 
@@ -221,12 +222,13 @@ def deserts_medicaux_FCA(d, communes, S, P, model="SFCA3", seuil  = 0.1, error =
     R_calcule = False
     # Calcul des probabilités selon le modèle spécifié
     if model == "SFCA2":
-        Prob = Prob_eval_SFCA2(d)
+        Prob = Prob_eval_SFCA2(d, f)
     elif model == "SFCA3":
-        Prob = Prob_eval_SFCA3(d, S)
+        Prob = Prob_eval_SFCA3(d, S, f)
     elif model =="point fixe" :
         R_calcule = True
-        R, Prob, errors = Point_fixe_SFCA(1.0/d, S, P, maxiter= 1000)
+        W = f(d)
+        R, Prob, errors = Point_fixe_SFCA(W, S, P, maxiter= 1000)
         #R, Prob = find_fixed_point_2(1.0/d, P, S)
     else:
         raise ValueError("Modèle non valide. Veuillez choisir parmi 'point fixe', 'SFCA2', ou 'SFCA3'.")
