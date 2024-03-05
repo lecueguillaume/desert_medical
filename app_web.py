@@ -12,6 +12,7 @@ from PIL import Image
 from fixed_effects.simulation import *
 from pandas.api.types import is_numeric_dtype
 import warnings
+import json
 
     
 
@@ -587,8 +588,13 @@ def local_css(file_name):
 
 local_css("style/style.css")
 
-# ---- LOAD ASSETS ----
-lottie_coding = load_lottieurl("https://assets4.lottiefiles.com/packages/lf20_nw19osms.json")
+# pour version en ligne
+#lottie_coding = load_lottieurl("https://assets4.lottiefiles.com/packages/lf20_nw19osms.json")
+
+#pour local
+f = open('animation.json')
+lottie_coding = json.load(f)
+
 st.title("Application de déserts médicaux")
 left_column, right_column = st.columns(2)
 with left_column:

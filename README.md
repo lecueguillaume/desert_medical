@@ -19,4 +19,5 @@ The application requires the following Python packages:
 - streamlit
 - streamlit_lottie
 - Pillow
+- openpyxl
 
